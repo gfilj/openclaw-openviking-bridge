@@ -212,25 +212,31 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now openviking
 ```
 
-#### Step 5: 配置 OpenClaw 插件
+#### Step 5: 配置 OpenClaw
 
-OpenClaw 已内置 OpenViking 插件。在 `~/.openclaw/openclaw.json` 中启用：
+在 `~/.openclaw/openclaw.json` 中添加 OpenViking 配置（**顶层配置，不是 plugins 下**）：
 
 ```json
 {
-  "plugins": {
-    "entries": {
-      "openviking": {
-        "enabled": true,
-        "config": {
-          "url": "http://localhost:1933",
-          "enabled": true
-        }
-      }
-    }
+  "openviking": {
+    "enabled": true,
+    "url": "http://localhost:1933",
+    "syncOnCompaction": true,
+    "searchBackend": "both"
   }
 }
 ```
+
+**配置说明：**
+
+| 字段 | 默认值 | 说明 |
+|------|--------|------|
+| `enabled` | `false` | 启用 OpenViking 集成 |
+| `url` | `http://localhost:1933` | OpenViking 服务地址 |
+| `syncOnCompaction` | `true` | 上下文压缩时同步消息到 Viking |
+| `searchBackend` | `"local"` | 搜索模式：`"local"` / `"openviking"` / `"both"` |
+
+> **注意**：配置必须在 `openclaw.json` **顶层**，不要放在 `plugins.entries` 下。
 
 如果你的 OpenClaw 版本不含内置插件，将 `openclaw-plugin/` 目录复制到 OpenClaw 的 `extensions/` 下：
 
