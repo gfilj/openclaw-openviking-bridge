@@ -349,6 +349,68 @@ ls ~/.openviking/workspace/viking/resources/daily-logs/
 
 ---
 
+---
+
+## 2026-03-03 优化更新
+
+本次更新包含以下性能和稳定性优化：
+
+### 1. Session 文件归档与截断
+
+**问题**：每次请求都从头读取完整 session 文件（可达数 MB），导致响应慢
+
+**解决**：
+- 新增 `session-archive.ts` — offload 时自动归档旧消息到 `.archive/` 目录
+- 归档后截断 session 文件，只保留最近 20 条消息
+- 效果：session 文件从 2.2MB 降到 81KB（减少 96%）
+
+### 2. Viking 并发控制
+
+**问题**：100% 并发 push 消息会把 Viking 服务打崩（HTTP 500）
+
+**解决**：
+- 添加 `MAX_CONCURRENCY = 40` 限制
+- 使用 `runWithConcurrency` 控制并发请求数
+- Viking 在 150 并发以下稳定
+
+### 3. Offload Fire-and-Forget
+
+**问题**：同步等待 offload 完成会阻塞请求处理
+
+**解决**：
+- 同步计算 `splitForOffload`（决定保留哪些消息）
+- 异步推送到 Viking，不阻塞主流程
+- `void offloadToViking(...).catch(() => null)`
+
+### 4. Tool Use/Result 配对修复
+
+**问题**：offload 切分消息时可能把 `tool_use` 和对应的 `tool_result` 分开，导致 API 报错
+
+**解决**：offload 切分后调用 `sanitizeToolUseResultPairing` 修复配对
+
+### 5. Bootstrap 优化（L0/L1）
+
+**问题**：MEMORY.md 完整内容占用大量 tokens
+
+**解决**：
+- `bootstrap-optimization.ts` — 用 OpenViking L0/L1 摘要替换完整内容
+- Token 消耗减少约 90%
+- 完整内容可通过 `memory_search` 按需检索
+
+### 新增文件
+
+```
+openclaw-plugin/openviking/
+├── client.ts              # OpenViking HTTP 客户端
+├── offload-utils.ts       # 纯函数：shouldOffload, splitForOffload
+├── session-offload.ts     # 并发控制的 offload 逻辑
+├── session-archive.ts     # 本地归档（数据安全）
+├── bootstrap-optimization.ts  # L0/L1 摘要优化
+└── index.ts               # 模块导出
+```
+
+---
+
 ## 致谢
 
 - [OpenViking](https://github.com/volcengine/OpenViking) — 字节跳动开源的 Agent 上下文数据库
