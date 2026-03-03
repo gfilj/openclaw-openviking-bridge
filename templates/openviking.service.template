@@ -1,0 +1,15 @@
+[Unit]
+Description=OpenViking Context Database Server
+After=network.target
+
+[Service]
+Type=simple
+User=CURRENT_USER
+WorkingDirectory=OPENVIKING_DIR
+ExecStart=OPENVIKING_DIR/.venv/bin/python3 -m openviking serve --port OPENVIKING_PORT --config OPENVIKING_CONF
+Restart=always
+RestartSec=5
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

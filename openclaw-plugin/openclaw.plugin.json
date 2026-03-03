@@ -1,0 +1,16 @@
+{
+  "id": "openviking",
+  "name": "OpenViking Memory Bridge",
+  "description": "Syncs compaction data to OpenViking for automatic long-term memory extraction",
+  "version": "0.2.0",
+  "kind": "extension",
+  "entry": "index.ts",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "url": { "type": "string", "default": "http://localhost:1933" }
+    }
+  }
+}

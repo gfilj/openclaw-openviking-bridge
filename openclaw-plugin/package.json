@@ -1,0 +1,13 @@
+{
+  "name": "@openclaw/openviking",
+  "version": "0.1.0",
+  "description": "OpenViking context database integration for OpenClaw",
+  "type": "module",
+  "main": "index.ts",
+  "openclaw": {
+    "id": "openviking",
+    "name": "OpenViking Memory Bridge",
+    "description": "Syncs compaction summaries to OpenViking for automatic long-term memory extraction",
+    "kind": "extension"
+  }
+}

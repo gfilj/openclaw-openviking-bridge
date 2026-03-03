@@ -1,33 +1,44 @@
 # CLAUDE.md — OpenClaw × OpenViking 集成安装
 
-> 这是给 Claude Code / Codex 等 AI 编程 Agent 的任务说明。
+> 给 Claude Code / Codex 等 AI 编程 Agent 的任务说明。
 > 目标：在当前机器上安装并配置 OpenViking 作为 OpenClaw 的长期记忆后端。
 
-## 背景
+## 项目结构
 
-OpenViking 是字节跳动开源的 Agent 上下文数据库（https://github.com/volcengine/OpenViking）。
-OpenClaw 内置了 OpenViking 插件，在 compaction 时自动将对话同步到 OpenViking，由其提取长期记忆。
+```
+openclaw-openviking-bridge/
+├── openclaw-plugin/          # OpenClaw 插件源码 → 复制到 extensions/openviking/
+│   ├── index.ts              # compaction hook 逻辑
+│   ├── openclaw.plugin.json
+│   └── package.json
+├── templates/                # 配置模板（占位符需替换）
+│   ├── ov.conf.template
+│   ├── agfs-config.yaml.template
+│   ├── dev.openviking.server.plist.template  (macOS)
+│   └── openviking.service.template           (Linux)
+└── install.sh                # 或者直接执行这个脚本
+```
 
-## 你需要做的
+## 执行计划
 
-### 1. 安装依赖
+### Phase 1: 依赖安装
 
 ```bash
-# Ollama（本地 embedding）
+# 1. Ollama
 # macOS:
 brew install ollama
 # Linux:
 curl -fsSL https://ollama.com/install.sh | sh
 
-# 拉取 bge-m3 embedding 模型
+# 2. 拉取 bge-m3 embedding 模型（~1.2GB）
 ollama pull bge-m3
 
-# 确保 cmake 已安装
+# 3. cmake（编译需要）
 # macOS: brew install cmake
 # Ubuntu: sudo apt install cmake build-essential
 ```
 
-### 2. 安装 OpenViking
+### Phase 2: OpenViking 安装
 
 ```bash
 git clone https://github.com/volcengine/OpenViking.git ~/OpenViking
@@ -37,86 +48,68 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### 3. 配置 OpenViking
+### Phase 3: 配置文件
 
-创建 `~/.openviking/ov.conf`：
+1. 创建 `~/.openviking/` 目录
+2. 从 `templates/ov.conf.template` 生成 `~/.openviking/ov.conf`：
+   - 替换 `OPENVIKING_CONF_DIR` → `~/.openviking` 的绝对路径
+   - 替换 `YOUR_DEEPSEEK_API_KEY` → 用户提供的 API Key（必须向用户询问）
+3. 从 `templates/agfs-config.yaml.template` 生成 `~/.openviking/workspace/.agfs/config.yaml`：
+   - 替换 `OPENVIKING_CONF_DIR` → 绝对路径
 
+### Phase 4: 系统服务
+
+**macOS:**
+- 从 `templates/dev.openviking.server.plist.template` 生成 plist
+- 替换所有占位符：`OPENVIKING_DIR`, `OPENVIKING_PORT`(默认1933), `OPENVIKING_CONF`, `OPENVIKING_CONF_DIR`
+- `launchctl load ~/Library/LaunchAgents/dev.openviking.server.plist`
+
+**Linux:**
+- 从 `templates/openviking.service.template` 生成 service 文件
+- 替换占位符 + `CURRENT_USER`
+- `sudo systemctl daemon-reload && sudo systemctl enable --now openviking`
+
+### Phase 5: OpenClaw 插件
+
+1. **如果 OpenClaw 已内置插件**（检查 `extensions/openviking/` 是否存在）：
+   - 只需在 `~/.openclaw/openclaw.json` 中启用
+   
+2. **如果没有内置插件**：
+   - 复制 `openclaw-plugin/` → OpenClaw 的 `extensions/openviking/`
+
+3. 在 `~/.openclaw/openclaw.json` 的 `plugins.entries` 中添加：
 ```json
-{
-  "storage": {
-    "workspace": "~/.openviking/workspace"
-  },
-  "log": {
-    "level": "INFO",
-    "output": "stdout"
-  },
-  "embedding": {
-    "dense": {
-      "provider": "openai",
-      "model": "bge-m3",
-      "dimension": 1024,
-      "api_key": "ollama",
-      "api_base": "http://localhost:11434/v1"
-    }
-  },
-  "vlm": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
-    "api_key": "<用户需要提供 DeepSeek API Key>",
-    "api_base": "https://api.deepseek.com"
+"openviking": {
+  "enabled": true,
+  "config": {
+    "url": "http://localhost:1933",
+    "enabled": true
   }
 }
 ```
 
-⚠️ VLM 的 API Key 需要用户提供。如果用户没有 DeepSeek，也支持 OpenAI、Anthropic、智谱等。
+4. 重启 Gateway: `openclaw gateway restart`
 
-### 4. 设置系统服务
-
-**macOS (launchd):**
-
-创建 `~/Library/LaunchAgents/dev.openviking.server.plist`，内容参考 install.sh 中的模板。
-关键参数：
-- ProgramArguments: `~/OpenViking/.venv/bin/python3 -m openviking serve --port 1933 --config ~/.openviking/ov.conf`
-- WorkingDirectory: `~/OpenViking`
-- KeepAlive: true
-- RunAtLoad: true
-
-```bash
-launchctl load ~/Library/LaunchAgents/dev.openviking.server.plist
-```
-
-**Linux (systemd):**
-
-创建 `/etc/systemd/system/openviking.service`，然后 `systemctl enable --now openviking`
-
-### 5. 配置 OpenClaw 插件
-
-在 `~/.openclaw/openclaw.json` 的 `plugins.entries` 中添加：
-
-```json
-"openviking": {
-  "enabled": true,
-  "url": "http://localhost:1933"
-}
-```
-
-然后重启 Gateway: `openclaw gateway restart`
-
-### 6. 验证
+### Phase 6: 验证
 
 ```bash
 # OpenViking 健康检查
 curl http://localhost:1933/health
-# → {"status": "ok"}
+# 期望: {"status": "ok"}
 
-# 检查 OpenClaw 日志中的插件加载
+# Ollama embedding 验证
+curl http://localhost:11434/api/embeddings -d '{"model":"bge-m3","prompt":"test"}' | head -c 50
+# 期望: {"embedding": [0.01...
+
+# OpenClaw 插件加载日志
 grep "openviking" /private/tmp/openclaw/openclaw-$(date +%Y-%m-%d).log | tail -5
+# 期望: [openviking] Registering hooks, server: http://localhost:1933
 ```
 
 ## 注意事项
 
+- VLM API Key **必须**向用户询问，不要跳过
 - OpenViking 编译需要 cmake 和 C++ 编译器
-- Ollama 需要先启动（macOS 上是一个 app，Linux 上是 systemd 服务）
-- bge-m3 模型约 1.2GB，首次加载较慢
-- 端口 1933 是默认端口，可通过环境变量 OPENVIKING_PORT 修改
-- VLM API Key 必须有效，否则记忆提取会失败（但不影响基础运行）
+- Ollama 需要先启动（macOS 是 App，Linux 是 systemd service）
+- 端口：OpenViking 1933, AGFS 1833, Ollama 11434
+- 插件是 fail-safe 的：OpenViking 挂了不影响 OpenClaw 正常运行

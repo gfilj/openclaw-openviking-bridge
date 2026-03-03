@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.openviking.server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>OPENVIKING_DIR/.venv/bin/python3</string>
+        <string>-m</string>
+        <string>openviking</string>
+        <string>serve</string>
+        <string>--port</string>
+        <string>OPENVIKING_PORT</string>
+        <string>--config</string>
+        <string>OPENVIKING_CONF</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>OPENVIKING_DIR</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>OPENVIKING_CONF_DIR/server.log</string>
+    <key>StandardErrorPath</key>
+    <string>OPENVIKING_CONF_DIR/server.err</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>OPENVIKING_CONFIG_FILE</key>
+        <string>OPENVIKING_CONF</string>
+    </dict>
+</dict>
+</plist>
