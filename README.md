@@ -397,6 +397,41 @@ ls ~/.openviking/workspace/viking/resources/daily-logs/
 - Token 消耗减少约 90%
 - 完整内容可通过 `memory_search` 按需检索
 
+### 6. Session 映射持久化
+
+**问题**：Gateway 重启后内存中的 Viking session 映射丢失，导致已推送但未 commit 的消息被遗弃
+
+**解决**：
+- 持久化到 `~/.openclaw/openviking-sessions.json`
+- 保存内容：session 映射 + 最后 commit 时间
+- 模块加载时自动恢复
+
+**数据格式**：
+```json
+{
+  "sessions": { "agent-key": "viking-session-id" },
+  "lastCommit": { "agent-key": 1709478000000 }
+}
+```
+
+### 7. 时间兜底 Commit（4小时强制）
+
+**问题**：如果长时间没有触发 offload，已推送的消息可能永远不会被 commit 提取记忆
+
+**解决**：
+- 跟踪每个 session 的 `lastCommitTime`
+- 每次 offload 检查：如果距上次 commit 超过 4 小时，即使没有新消息也强制 commit
+- `FORCE_COMMIT_INTERVAL_MS = 4 * 60 * 60 * 1000`
+
+### 8. 内容截断与完整性标记
+
+**问题**：超长消息（如大文件内容）会导致 Viking 处理缓慢或失败
+
+**解决**：
+- 截断阈值：`MAX_CONTENT_LENGTH = 20000`（20k 字符）
+- 添加完整性标记：`[...TRUNCATED, original length: X chars]`
+- 确保 Viking 不会被超大内容压垮
+
 ### 新增文件
 
 ```
