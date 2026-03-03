@@ -441,7 +441,40 @@ openclaw-plugin/openviking/
 ├── session-offload.ts     # 并发控制的 offload 逻辑
 ├── session-archive.ts     # 本地归档（数据安全）
 ├── bootstrap-optimization.ts  # L0/L1 摘要优化
+├── search.ts              # memory_search 集成（Viking → OpenClaw 格式）
 └── index.ts               # 模块导出
+```
+
+### Memory Search 集成
+
+`search.ts` 将 OpenViking 搜索结果转换为 OpenClaw `MemorySearchResult` 格式：
+
+```typescript
+// 配置 searchBackend 模式
+// openclaw.json
+{
+  "openviking": {
+    "enabled": true,
+    "url": "http://localhost:1933",
+    "searchBackend": "both"  // "local" | "openviking" | "both"
+  }
+}
+```
+
+| `searchBackend` | 行为 |
+|-----------------|------|
+| `"local"` | 只用 OpenClaw 本地 memory_search（默认） |
+| `"openviking"` | 只用 Viking 搜索 |
+| `"both"` | 合并两者结果，按 score 排序去重 |
+
+**数据流**：
+```
+memory_search(query)
+    ↓
+├── local: SQLite 向量检索 → MemorySearchResult[]
+└── viking: /api/v1/search/find → VikingFindItem[] → MemorySearchResult[]
+    ↓
+mergeSearchResults() → 去重 + 排序 → 返回给 Agent
 ```
 
 ---

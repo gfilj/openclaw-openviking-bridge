@@ -5,6 +5,7 @@
  * - Session offload with concurrency control
  * - Local archiving before Viking push (data safety)
  * - Bootstrap optimization (L0/L1 memory summary)
+ * - Memory search integration (Viking → OpenClaw format)
  * - HTTP client for Viking API
  */
 
@@ -13,3 +14,4 @@ export * from "./offload-utils.js";
 export * from "./session-offload.js";
 export * from "./session-archive.js";
 export * from "./bootstrap-optimization.js";
+export * from "./search.js";
